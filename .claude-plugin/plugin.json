@@ -1,0 +1,8 @@
+{
+  "name": "drona",
+  "version": "0.1.0",
+  "description": "An AI teacher that plans to a fixed deadline, makes you do the work, and checks you like the real exam would.",
+  "author": { "name": "Yash Mangal" },
+  "license": "MIT",
+  "keywords": ["teacher", "learning", "study-plan", "spaced-repetition", "claude-code"]
+}

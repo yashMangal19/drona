@@ -1,0 +1,14 @@
+{
+  "name": "drona",
+  "owner": {
+    "name": "Yash Mangal"
+  },
+  "plugins": [
+    {
+      "name": "drona",
+      "source": "./",
+      "description": "An AI teacher: a dated plan to a fixed deadline, a four-step loop per concept, and exam-style checks."
+    }
+  ],
+  "description": "drona: an open-source AI teacher for Claude Code."
+}
