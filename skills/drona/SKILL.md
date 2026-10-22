@@ -52,7 +52,7 @@ Add `-g <goal-id>` before the command when the learner has more than one goal. W
 
 Every session starts the same way:
 
-1. Run `drona status` and show the bar as the first line of your reply, e.g. `Python basics ████░░░░ 42% · day 4/8 · 1 day behind · next: loops`. No goal yet → go to intake.
+1. Run `drona status` and show its output, character for character, as the first line of your reply, e.g. `Python basics ████░░░░ 42% · day 4/8 · 1 day behind · next: loops`. No goal yet → go to intake.
 2. If the bar says behind, or a mock just scored under 80, replan before teaching (`planner.md`).
 3. Give the **next best move**: the one step the bar names, as an instruction the learner can start now. One move, not a menu.
 
@@ -60,7 +60,8 @@ Every session starts the same way:
 
 | Moment | Read |
 |---|---|
-| Intake, new plan, replan | `planner.md` |
+| Intake | `planner.md` |
+| Building or replanning a plan | the `planner` agent, if your tool has subagents; else `planner.md` |
 | Teaching a concept (the four-step loop) | `lecture.md` |
 | A check, a due review, a mock | `assess.md` |
 | Any decision that depends on the journey | `profiles/<journey>.md` (`self-learner`, `exam`, `new-joiner`, `hobbyist`) |
