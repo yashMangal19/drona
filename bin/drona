@@ -1,0 +1,529 @@
+#!/usr/bin/env python3
+"""drona: read and update a learner's goal folder (see docs/state.md).
+
+Standard library only, no network. Every view reads progress.json.
+"""
+import argparse
+import datetime as dt
+import html
+import json
+import os
+import sys
+from pathlib import Path
+
+SCHEMA = 1
+PASS = 80
+LADDER = [1, 3, 7, 21]
+JOURNEYS = ("self-learner", "exam", "new-joiner", "hobbyist")
+STATUSES = ("todo", "active", "done", "cut")
+STEPS = ("theory", "notebook", "hands_on", "out_loud")
+WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+LIFE_HOURS = 3  # meals, hygiene, people: never planned away
+
+
+# ---------- loading ----------
+
+def home():
+    return Path(os.environ.get("DRONA_HOME", Path.home() / "drona")).expanduser()
+
+
+def today():
+    override = os.environ.get("DRONA_TODAY")
+    return dt.date.fromisoformat(override) if override else dt.date.today()
+
+
+def day(s):
+    return dt.date.fromisoformat(s) if s else None
+
+
+def goal_dir(goal):
+    if goal:
+        p = Path(goal).expanduser()
+        if (p / "progress.json").exists():
+            return p
+        p = home() / goal
+        if (p / "progress.json").exists():
+            return p
+        sys.exit(f"drona: no goal '{goal}' (looked in {home()})")
+    goals = sorted(home().glob("*/progress.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not goals:
+        sys.exit(f"drona: no goals yet in {home()}. Start one with /drona-plan.")
+    return goals[0].parent
+
+
+def load(d):
+    with open(d / "progress.json") as f:
+        return json.load(f)
+
+
+def save(d, state):
+    tmp = d / "progress.json.tmp"
+    with open(tmp, "w") as f:
+        json.dump(state, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    tmp.replace(d / "progress.json")
+
+
+def concept(state, cid):
+    for c in state["concepts"]:
+        if c["id"] == cid:
+            return c
+    sys.exit(f"drona: no concept '{cid}'")
+
+
+# ---------- derived numbers ----------
+
+def study_days(state, first, n):
+    """The n study days from `first`, skipping rest days."""
+    rest = set(state["learner"].get("rest_days", []))
+    out, d = [], first
+    while len(out) < n:
+        if WEEKDAYS[d.weekday()] not in rest:
+            out.append(d)
+        d += dt.timedelta(days=1)
+        if len(out) == 0 and (d - first).days > 7:
+            break  # every day is a rest day; validate reports it
+    return out
+
+
+def load_by_day(state):
+    loads = {}
+    for c in state["concepts"]:
+        if c.get("status") == "cut" or not c.get("date"):
+            continue
+        n = max(1, int(c.get("days", 1)))
+        for d in study_days(state, day(c["date"]), n):
+            loads.setdefault(d, []).append((c["id"], c.get("minutes", 0) / n))
+    return loads
+
+
+def progress_pct(state):
+    live = [c for c in state["concepts"] if c.get("status") != "cut"]
+    total = sum(c.get("weight", 1) for c in live)
+    done = sum(c.get("weight", 1) for c in live if c.get("status") == "done")
+    return round(100 * done / total) if total else 0
+
+
+def days_behind(state, now):
+    late = [day(c["date"]) for c in state["concepts"]
+            if c.get("status") not in ("done", "cut") and c.get("date") and day(c["date"]) < now]
+    return (now - min(late)).days if late else 0
+
+
+def reviews_due(state, now):
+    due = [c for c in state["concepts"]
+           if c.get("review", {}).get("due") and day(c["review"]["due"]) <= now and c.get("status") != "cut"]
+    return sorted(due, key=lambda c: c["review"]["due"])
+
+
+def next_move(state, now):
+    due = reviews_due(state, now)
+    if due:
+        more = f" (+{len(due) - 1} more)" if len(due) > 1 else ""
+        return f"review {due[0]['title']}{more}"
+    closed = {c["id"] for c in state["concepts"] if c.get("status") in ("done", "cut")}
+    ready = [c for c in state["concepts"]
+             if c.get("status") not in ("done", "cut") and all(dep in closed for dep in c.get("deps", []))]
+    ready.sort(key=lambda c: (c.get("status") != "active", c.get("date") or "9999", c.get("layer", 0)))
+    if ready:
+        return ready[0]["title"]
+    mocks = [m for m in state.get("milestones", []) if m.get("score") is None]
+    if mocks:
+        return f"mock: {mocks[0]['title']}"
+    return "final exam: " + state["goal"].get("exam", "the done-test")
+
+
+def bar(state, now=None, width=8):
+    now = now or today()
+    g = state["goal"]
+    pct = progress_pct(state)
+    filled = round(width * pct / 100)
+    start, end = day(g["start"]), day(g["deadline"])
+    total = (end - start).days + 1
+    n = min(max((now - start).days + 1, 1), total)
+    behind = days_behind(state, now)
+    pace = f"{behind} day{'s' if behind != 1 else ''} behind" if behind else "on track"
+    if now > end:
+        pace = "past deadline"
+    return (f"{g['title']} {'█' * filled}{'░' * (width - filled)} {pct}% · day {n}/{total}"
+            f" · {pace} · next: {next_move(state, now)}")
+
+
+# ---------- validation (D-09 safety + shape) ----------
+
+def validate(state, before=None):
+    errors, warnings = [], []
+    g, L = state.get("goal", {}), state.get("learner", {})
+    if state.get("schema") != SCHEMA:
+        errors.append(f"schema must be {SCHEMA}")
+    if g.get("journey") not in JOURNEYS:
+        errors.append(f"goal.journey must be one of {', '.join(JOURNEYS)}")
+    for k in ("id", "title", "exam", "start", "deadline"):
+        if not g.get(k):
+            errors.append(f"goal.{k} is missing")
+    try:
+        start, end = day(g["start"]), day(g["deadline"])
+    except (KeyError, TypeError, ValueError):
+        return errors + ["goal.start/deadline must be ISO dates"], warnings
+
+    floor = 8 if L.get("under_18") else 7
+    sleep = L.get("sleep_hours", 0)
+    if sleep < floor:
+        errors.append(f"SAFETY sleep_hours {sleep} is below the floor of {floor}")
+    rest = L.get("rest_days", [])
+    if not rest:
+        errors.append("SAFETY at least one rest day is required")
+    if any(r not in WEEKDAYS for r in rest):
+        errors.append(f"rest_days must use {', '.join(WEEKDAYS)}")
+    budget = L.get("study_minutes", 0)
+    used = sleep + L.get("fixed_hours", 0) + budget / 60 + LIFE_HOURS
+    if used > 24:
+        errors.append(f"SAFETY sleep + fixed + study + {LIFE_HOURS}h life = {used:.1f}h, over 24h")
+    block = L.get("block", [50, 10])
+    if len(block) != 2 or block[1] < 5:
+        errors.append("SAFETY block needs a break of at least 5 minutes, e.g. [50, 10]")
+
+    ids = [c.get("id") for c in state.get("concepts", [])]
+    if len(ids) != len(set(ids)):
+        errors.append("concept ids must be unique")
+    byid = {c.get("id"): c for c in state.get("concepts", [])}
+    for c in state.get("concepts", []):
+        cid = c.get("id")
+        if c.get("status") not in STATUSES:
+            errors.append(f"{cid}: status must be one of {', '.join(STATUSES)}")
+        if c.get("weight") not in (1, 2, 3):
+            errors.append(f"{cid}: weight must be 1, 2 or 3")
+        for dep in c.get("deps", []):
+            if dep not in byid:
+                errors.append(f"{cid}: unknown dep '{dep}'")
+            elif byid[dep].get("layer", 0) > c.get("layer", 0):
+                warnings.append(f"{cid}: dep '{dep}' sits in a higher layer")
+            elif (c.get("date") and byid[dep].get("date") and byid[dep]["date"] > c["date"]
+                  and byid[dep].get("status") != "cut"):
+                errors.append(f"{cid}: planned before its dep '{dep}'")
+        if c.get("status") == "cut" or not c.get("date"):
+            continue
+        d0 = day(c["date"])
+        if WEEKDAYS[d0.weekday()] in rest:
+            errors.append(f"SAFETY {cid}: planned on a rest day ({c['date']})")
+        days = study_days(state, d0, max(1, int(c.get("days", 1))))
+        if days and days[-1] > end:
+            errors.append(f"{cid}: runs past the deadline ({days[-1]})")
+        if d0 < start:
+            errors.append(f"{cid}: planned before the start date")
+    for d, items in sorted(load_by_day(state).items()):
+        total = sum(m for _, m in items)
+        if total > budget + 0.5:
+            names = ", ".join(i for i, _ in items)
+            errors.append(f"SAFETY {d}: {total:.0f} min planned, over the {budget} min budget ({names})")
+
+    if before:
+        B = before.get("learner", {})
+        approved = any(r.get("learner_approved") for r in state.get("plan", {}).get("replans", [])[
+            len(before.get("plan", {}).get("replans", [])):])
+        if sleep < B.get("sleep_hours", 0):
+            errors.append("SAFETY a replan lowered sleep_hours; sleep is never cut")
+        if set(B.get("rest_days", [])) - set(rest):
+            errors.append("SAFETY a replan removed a rest day; rest is never cut")
+        if budget > B.get("study_minutes", 0) and not approved:
+            errors.append("SAFETY a replan raised study_minutes without learner_approved: true")
+        if g.get("deadline") != before.get("goal", {}).get("deadline") and not approved:
+            errors.append("a replan moved the deadline without learner_approved: true")
+    return errors, warnings
+
+
+# ---------- rendering ----------
+
+def render_plan_md(state):
+    g, L = state["goal"], state["learner"]
+    out = [f"# {g['title']}", "",
+           f"<!-- Generated from progress.json by `drona render`. Change the plan there or ask drona to replan. -->", "",
+           f"**Done means:** {g['exam']}  ",
+           f"**Journey:** {g['journey']} · **Dates:** {g['start']} → {g['deadline']}  ",
+           f"**Each study day:** {L.get('study_minutes')} min in {L.get('block', [50, 10])[0]}/{L.get('block', [50, 10])[1]} blocks"
+           f" · sleep {L.get('sleep_hours')}h protected · rest: {', '.join(L.get('rest_days', []))}", ""]
+    if state.get("plan", {}).get("why"):
+        out += ["## Why this plan", "", state["plan"]["why"], ""]
+    out += ["## Tree", ""]
+    layers = sorted({c.get("layer", 0) for c in state["concepts"]})
+    for layer in layers:
+        out.append(f"### L{layer}")
+        for c in [c for c in state["concepts"] if c.get("layer", 0) == layer]:
+            star = " ★" if c.get("star") else ""
+            mark = {"done": "x", "cut": "-"}.get(c.get("status"), " ")
+            deps = f" ← {', '.join(c['deps'])}" if c.get("deps") else ""
+            cut = " (cut)" if c.get("status") == "cut" else ""
+            out.append(f"- [{mark}] **{c['title']}**{star} `{c['id']}` · {c.get('minutes')} min · w{c.get('weight')}{deps}{cut}")
+        out.append("")
+    out += ["## Timeline", "", "| Day | Study | Milestone |", "|---|---|---|"]
+    loads = load_by_day(state)
+    mocks = {m["date"]: m["title"] for m in state.get("milestones", [])}
+    d, end = day(state["goal"]["start"]), day(state["goal"]["deadline"])
+    titles = {c["id"]: c["title"] for c in state["concepts"]}
+    while d <= end:
+        rest = WEEKDAYS[d.weekday()] in state["learner"].get("rest_days", [])
+        study = "rest" if rest else ", ".join(f"{titles[i]} ({m:.0f}m)" for i, m in loads.get(d, [])) or "buffer"
+        out.append(f"| {d} {WEEKDAYS[d.weekday()]} | {study} | {mocks.get(d.isoformat(), '')} |")
+        d += dt.timedelta(days=1)
+    reps = state.get("plan", {}).get("replans", [])
+    if reps:
+        out += ["", "## Replans", ""]
+        out += [f"- {r['date']}: {r['reason']} → {r['change']}" for r in reps]
+    return "\n".join(out) + "\n"
+
+
+def mastery_class(c):
+    if c.get("status") == "cut":
+        return "cut"
+    m = c.get("mastery", 0)
+    if c.get("status") == "done" and m >= PASS:
+        return "m4"
+    if m >= 60:
+        return "m3"
+    if m > 0 or c.get("status") == "active":
+        return "m2"
+    return "m1"
+
+
+def render_html(state, now=None):
+    now = now or today()
+    e = html.escape
+    g = state["goal"]
+    pct = progress_pct(state)
+    layers = sorted({c.get("layer", 0) for c in state["concepts"]})
+    titles = {c["id"]: c["title"] for c in state["concepts"]}
+
+    cols = []
+    for layer in layers:
+        cards = []
+        for c in [c for c in state["concepts"] if c.get("layer", 0) == layer]:
+            steps = "".join(f'<i class="{"on" if c.get("steps", {}).get(s) else ""}" title="{s.replace("_", " ")}"></i>'
+                            for s in STEPS)
+            deps = (f'<div class="deps">needs {e(", ".join(titles.get(d, d) for d in c["deps"]))}</div>'
+                    if c.get("deps") else "")
+            cards.append(
+                f'<div class="card {mastery_class(c)}"><div class="t">{e(c["title"])}'
+                f'{" <b>★</b>" if c.get("star") else ""}</div>'
+                f'<div class="meta">{e(c.get("status", ""))} · {c.get("mastery", 0)}% · {e(c.get("date") or "")}</div>'
+                f'<div class="steps">{steps}</div>{deps}</div>')
+        cols.append(f'<section class="col"><h3>L{layer}</h3>{"".join(cards)}</section>')
+
+    rows = []
+    loads = load_by_day(state)
+    mocks = {m["date"]: m for m in state.get("milestones", [])}
+    d, end = day(g["start"]), day(g["deadline"])
+    while d <= end:
+        rest = WEEKDAYS[d.weekday()] in state["learner"].get("rest_days", [])
+        items = "rest day" if rest else ", ".join(e(titles[i]) for i, _ in loads.get(d, [])) or "buffer"
+        m = mocks.get(d.isoformat())
+        mock = f' <span class="mock">{e(m["title"])}{" · " + str(m["score"]) + "%" if m.get("score") is not None else ""}</span>' if m else ""
+        cls = " ".join(x for x in ("today" if d == now else "", "past" if d < now else "", "rest" if rest else "") if x)
+        rows.append(f'<li class="{cls}"><span class="d">{WEEKDAYS[d.weekday()]} {d.strftime("%d %b")}</span>'
+                    f'<span>{items}{mock}</span></li>')
+        d += dt.timedelta(days=1)
+
+    due = reviews_due(state, now)
+    upcoming = sorted([c for c in state["concepts"] if c.get("review", {}).get("due") and c not in due],
+                      key=lambda c: c["review"]["due"])[:6]
+    rev = "".join(f'<li class="due">{e(c["title"])} <span>due {e(c["review"]["due"])}</span></li>' for c in due)
+    rev += "".join(f'<li>{e(c["title"])} <span>{e(c["review"]["due"])}</span></li>' for c in upcoming)
+    rev = rev or "<li>None yet. Reviews appear after your first passed check.</li>"
+    log = "".join(f'<li><span class="d">{e(x["date"])}</span> {e(x["kind"])}'
+                  f'{" · " + e(titles.get(x.get("concept"), x.get("concept") or "")) if x.get("concept") else ""}'
+                  f'{" · " + str(x["score"]) + "%" if x.get("score") is not None else ""}'
+                  f'{" · " + e(x["note"]) if x.get("note") else ""}</li>'
+                  for x in reversed(state.get("log", [])[-12:]))
+
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(g['title'])} · drona</title>
+<style>
+:root {{ --bg:#faf8f4; --fg:#1d1b18; --mut:#6b665e; --line:#e3ded4; --card:#fff;
+  --m1:#ece8e0; --m2:#f6d9a8; --m3:#cfe3a6; --m4:#7fbf7f; --acc:#b4532a; }}
+@media (prefers-color-scheme: dark) {{ :root {{ --bg:#16150f; --fg:#ece8e0; --mut:#9c968b; --line:#2e2b25; --card:#1f1d18;
+  --m1:#2b2924; --m2:#5a4522; --m3:#3f5428; --m4:#2f6a3a; --acc:#e07a4a; }} }}
+* {{ box-sizing:border-box }} body {{ margin:0; background:var(--bg); color:var(--fg);
+  font:15px/1.45 -apple-system, system-ui, "Segoe UI", sans-serif; }}
+main {{ max-width:1100px; margin:0 auto; padding:24px 16px 64px }}
+h1 {{ margin:0 0 4px; font-size:26px }} h2 {{ font-size:17px; margin:32px 0 10px }}
+.sub {{ color:var(--mut) }} .bar {{ font-family:ui-monospace, Menlo, monospace; margin:14px 0; padding:10px 12px;
+  background:var(--card); border:1px solid var(--line); border-radius:8px; overflow-x:auto; white-space:nowrap }}
+.meter {{ height:10px; background:var(--m1); border-radius:5px; overflow:hidden }} .meter div {{ height:100%; background:var(--m4) }}
+.tree {{ display:flex; gap:12px; overflow-x:auto; padding-bottom:8px }}
+.col {{ min-width:200px; flex:1 }} .col h3 {{ margin:0 0 8px; font-size:13px; color:var(--mut) }}
+.card {{ border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:8px }}
+.card .t {{ font-weight:600 }} .card b {{ color:var(--acc) }} .meta, .deps {{ font-size:12px; color:var(--mut) }}
+.m1 {{ background:var(--m1) }} .m2 {{ background:var(--m2) }} .m3 {{ background:var(--m3) }} .m4 {{ background:var(--m4) }}
+.cut {{ opacity:.45; text-decoration:line-through }}
+.steps {{ display:flex; gap:4px; margin:6px 0 2px }} .steps i {{ width:14px; height:6px; border-radius:3px; background:var(--line) }}
+.steps i.on {{ background:var(--fg) }}
+.legend span {{ display:inline-block; padding:2px 8px; border-radius:4px; margin-right:6px; font-size:12px }}
+ul {{ list-style:none; padding:0; margin:0 }} .tl li, .rv li, .lg li {{ padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:12px }}
+.tl .d, .lg .d {{ min-width:92px; color:var(--mut); font-variant-numeric:tabular-nums }}
+.tl .past {{ opacity:.6 }} .tl .rest {{ color:var(--mut); font-style:italic }}
+.tl .today {{ font-weight:600; border-left:3px solid var(--acc); padding-left:8px }}
+.mock {{ color:var(--acc); font-weight:600 }} .rv li {{ justify-content:space-between }} .rv .due {{ color:var(--acc); font-weight:600 }}
+.grid {{ display:grid; grid-template-columns:1fr 1fr; gap:24px }} @media (max-width:720px) {{ .grid {{ grid-template-columns:1fr }} }}
+</style></head><body><main>
+<h1>{e(g['title'])}</h1>
+<div class="sub">Done means: {e(g['exam'])}</div>
+<div class="bar">{e(bar(state, now))}</div>
+<div class="meter"><div style="width:{pct}%"></div></div>
+<h2>Tree</h2>
+<div class="legend"><span class="m1">not started</span><span class="m2">learning</span><span class="m3">nearly</span><span class="m4">mastered</span> ★ exam weighs most · bars: theory, notebook, hands-on, out loud</div>
+<div class="tree">{''.join(cols)}</div>
+<div class="grid">
+<div><h2>Timeline</h2><ul class="tl">{''.join(rows)}</ul></div>
+<div><h2>Reviews</h2><ul class="rv">{rev}</ul><h2>Recent</h2><ul class="lg">{log or '<li>Nothing yet.</li>'}</ul></div>
+</div>
+<p class="sub">Generated {now} from progress.json. Sleep {state['learner'].get('sleep_hours')}h and rest days are protected.</p>
+</main></body></html>
+"""
+
+
+# ---------- commands ----------
+
+def cmd_status(a):
+    d = goal_dir(a.goal)
+    print(bar(load(d)))
+
+
+def cmd_list(a):
+    goals = sorted(home().glob("*/progress.json"))
+    if not goals:
+        print(f"No goals in {home()}.")
+    for f in goals:
+        print(f"{f.parent.name}: {bar(json.load(open(f)))}")
+
+
+def cmd_render(a):
+    d = goal_dir(a.goal)
+    state = load(d)
+    (d / "PLAN.md").write_text(render_plan_md(state))
+    (d / "progress.html").write_text(render_html(state))
+    print(d / "progress.html")
+
+
+def cmd_validate(a):
+    d = goal_dir(a.goal)
+    state = load(d)
+    before = None
+    path = Path(a.before) if a.before else d / ".progress.before.json"
+    if path.exists():
+        before = json.load(open(path))
+    errors, warnings = validate(state, before)
+    for w in warnings:
+        print(f"warn: {w}")
+    for x in errors:
+        print(f"error: {x}")
+    if errors:
+        sys.exit(1)
+    print("ok" + (" (checked against the pre-replan snapshot)" if before else ""))
+
+
+def cmd_snapshot(a):
+    d = goal_dir(a.goal)
+    (d / ".progress.before.json").write_text((d / "progress.json").read_text())
+    print(d / ".progress.before.json")
+
+
+def cmd_new(a):
+    d = home() / a.id
+    if (d / "progress.json").exists():
+        sys.exit(f"drona: {d} already exists")
+    (d / "notes").mkdir(parents=True, exist_ok=True)
+    now = today().isoformat()
+    save(d, {"schema": SCHEMA,
+             "goal": {"id": a.id, "title": a.id.replace("-", " ").capitalize(), "journey": "", "exam": "",
+                      "start": now, "deadline": now},
+             "learner": {"under_18": False, "sleep_hours": 8, "fixed_hours": 0, "study_minutes": 60,
+                         "rest_days": ["Sun"], "block": [50, 10], "humans": ""},
+             "plan": {"model": "", "why": "", "replans": []},
+             "concepts": [], "milestones": [], "log": []})
+    print(d)
+
+
+def cmd_step(a):
+    d = goal_dir(a.goal)
+    state = load(d)
+    c = concept(state, a.concept)
+    if a.step not in STEPS:
+        sys.exit(f"drona: step must be one of {', '.join(STEPS)}")
+    c.setdefault("steps", {s: False for s in STEPS})[a.step] = True
+    if c.get("status") == "todo":
+        c["status"] = "active"
+    state["log"].append({"date": today().isoformat(), "kind": "session", "concept": c["id"],
+                         "note": a.step.replace("_", " ") + (" · " + a.note if a.note else "")})
+    save(d, state)
+    print(bar(state))
+
+
+def cmd_check(a):
+    d = goal_dir(a.goal)
+    state = load(d)
+    now = today()
+    if a.kind == "mock":
+        m = next((m for m in state.get("milestones", []) if m["id"] == a.concept), None)
+        if not m:
+            sys.exit(f"drona: no milestone '{a.concept}'")
+        m["score"] = a.score
+        state["log"].append({"date": now.isoformat(), "kind": "mock", "concept": None, "score": a.score,
+                             "note": m["title"] + (" · " + a.note if a.note else "")})
+        save(d, state)
+        print(bar(state))
+        return
+    c = concept(state, a.concept)
+    c["mastery"] = a.score
+    r = c.setdefault("review", {"level": 0, "due": None})
+    if a.score >= PASS:
+        c["status"] = "done"
+        if a.kind == "check":
+            r["level"] = 0
+        if r["level"] < len(LADDER):
+            r["due"] = (now + dt.timedelta(days=LADDER[r["level"]])).isoformat()
+            r["level"] += 1
+        else:
+            r["due"] = None
+    else:
+        c["status"] = "active"
+        r["level"] = 0
+        r["due"] = (now + dt.timedelta(days=1)).isoformat()
+    state["log"].append({"date": now.isoformat(), "kind": a.kind, "concept": c["id"], "score": a.score,
+                         **({"note": a.note} if a.note else {})})
+    save(d, state)
+    print(("pass" if a.score >= PASS else f"not yet (pass mark {PASS})") +
+          (f" · next review {r['due']}" if r["due"] else " · review retired"))
+    print(bar(state))
+
+
+def main():
+    p = argparse.ArgumentParser(prog="drona", description="Read and update a drona goal folder (docs/state.md).")
+    p.add_argument("-g", "--goal", help="goal id or folder (default: the most recently updated goal)")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("status", help="print the progress bar").set_defaults(fn=cmd_status)
+    sub.add_parser("list", help="one bar per goal").set_defaults(fn=cmd_list)
+    sub.add_parser("render", help="regenerate PLAN.md and progress.html").set_defaults(fn=cmd_render)
+    s = sub.add_parser("validate", help="check shape and safety rules; exit 1 on any error")
+    s.add_argument("--before", help="pre-replan copy of progress.json (default: .progress.before.json)")
+    s.set_defaults(fn=cmd_validate)
+    sub.add_parser("snapshot", help="save .progress.before.json ahead of a replan").set_defaults(fn=cmd_snapshot)
+    s = sub.add_parser("new", help="create an empty goal folder")
+    s.add_argument("id")
+    s.set_defaults(fn=cmd_new)
+    s = sub.add_parser("step", help="tick one loop step on a concept")
+    s.add_argument("concept")
+    s.add_argument("step", choices=STEPS)
+    s.add_argument("--note")
+    s.set_defaults(fn=cmd_step)
+    s = sub.add_parser("check", help="record an examiner score (0-100)")
+    s.add_argument("concept", help="concept id, or milestone id with --kind mock")
+    s.add_argument("score", type=int)
+    s.add_argument("--kind", choices=("check", "review", "mock"), default="check")
+    s.add_argument("--note")
+    s.set_defaults(fn=cmd_check)
+    a = p.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()

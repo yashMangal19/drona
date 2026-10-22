@@ -1,0 +1,3 @@
+#!/bin/sh
+# Print the progress bar for a drona goal (D-07). Same as `drona status`.
+exec "$(dirname "$0")/drona" "$@" status
