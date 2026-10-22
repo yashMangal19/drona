@@ -5,7 +5,7 @@ How drona turns a goal into a plan and keeps it on the deadline. Two parts:
 - **The contract** (stable): what the planner takes in, what it must write, and the checks every plan passes. Intake, commands and views depend only on this.
 - **The model** (swappable): how the tree and timeline are built. The current model is `tree-timeline` (D-03, provisional). A new model replaces only that section and sets `plan.model` to its own name.
 
-If your tool can run a fresh-context subagent, dispatch the `planner` agent for build and replan, passing this file's path and the goal folder. Otherwise follow this file inline.
+Build and replan run in the `planner` agent whenever your tool has subagents (Claude Code does), so the main session keeps only the result: dispatch it with this file's path, the goal folder, and "build" or "replan" with the reason. Without subagents, follow this file inline.
 
 ## Intake
 

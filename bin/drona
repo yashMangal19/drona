@@ -262,7 +262,8 @@ def render_plan_md(state):
     titles = {c["id"]: c["title"] for c in state["concepts"]}
     while d <= end:
         rest = WEEKDAYS[d.weekday()] in state["learner"].get("rest_days", [])
-        study = "rest" if rest else ", ".join(f"{titles[i]} ({m:.0f}m)" for i, m in loads.get(d, [])) or "buffer"
+        study = "rest" if rest else ", ".join(f"{titles[i]} ({m:.0f}m)" for i, m in loads.get(d, [])) or (
+            "" if d.isoformat() in mocks else "buffer")
         out.append(f"| {d} {WEEKDAYS[d.weekday()]} | {study} | {mocks.get(d.isoformat(), '')} |")
         d += dt.timedelta(days=1)
     reps = state.get("plan", {}).get("replans", [])
@@ -314,8 +315,8 @@ def render_html(state, now=None):
     d, end = day(g["start"]), day(g["deadline"])
     while d <= end:
         rest = WEEKDAYS[d.weekday()] in state["learner"].get("rest_days", [])
-        items = "rest day" if rest else ", ".join(e(titles[i]) for i, _ in loads.get(d, [])) or "buffer"
         m = mocks.get(d.isoformat())
+        items = "rest day" if rest else ", ".join(e(titles[i]) for i, _ in loads.get(d, [])) or ("" if m else "buffer")
         mock = f' <span class="mock">{e(m["title"])}{" · " + str(m["score"]) + "%" if m.get("score") is not None else ""}</span>' if m else ""
         cls = " ".join(x for x in ("today" if d == now else "", "past" if d < now else "", "rest" if rest else "") if x)
         rows.append(f'<li class="{cls}"><span class="d">{WEEKDAYS[d.weekday()]} {d.strftime("%d %b")}</span>'
