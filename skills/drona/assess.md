@@ -2,7 +2,12 @@
 
 The exam defines done (principle 8). A concept is `done` only after the learner answers exam-style questions on it without help and scores 80 or more. The teacher never grades its own teaching: questions and grades come from the **examiner**, a fresh context that has not seen the lesson.
 
-If your tool can run a fresh-context subagent, dispatch the `examiner` agent with this file's path, the goal folder, the concept id and the kind (check, review, mock or diagnostic). Without one, start a fresh chat or a clearly separate turn, and follow "Examiner" below using only the inputs it lists.
+If your tool can run a fresh-context subagent, use the `examiner` agent in two dispatches, each with this file's path, the goal folder, the id and the kind (check, review, mock or diagnostic):
+
+1. **write** → it saves questions and model answers to `exams/<id>-<kind>.md` and returns the questions only. Ask them; leave that file unread, so the teacher stays out of the grading.
+2. **grade** with the learner's answers verbatim → it records the score and returns the report.
+
+Without a subagent, start a fresh chat or a clearly separate turn and follow "Examiner" below using only the inputs it lists.
 
 ## Kinds
 
