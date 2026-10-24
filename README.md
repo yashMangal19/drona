@@ -6,9 +6,9 @@
 
 drona turns a goal ("learn Python basics in a week", "JEE Physics by May", "ramp up on a new platform") into a dated plan, teaches each concept through a four-step loop, and only marks it done when you pass exam-style questions from a separate examiner. Fall behind and it replans to still make the date, without ever cutting your sleep.
 
-```
-Python basics ████░░░░ 42% · day 4/8 · 1 day behind · next: loops
-```
+[![drona planning a week of Python, a check graded by a separate examiner, and a replan that refuses to cut sleep](assets/media/drona-hero.gif)](assets/media/drona-promo.mp4)
+
+*A replay of a real test run, with the learner's answers scripted. [Watch the 64-second film](assets/media/drona-promo.mp4).*
 
 ## Install
 

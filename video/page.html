@@ -1,0 +1,169 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>drona promo</title>
+<style>
+:root{--bg:#faf8f4;--ink:#1d1b18;--ink2:#5b564e;--ink3:#9c968b;--line:#e3ded4;--card:#fff;--acc:#b4532a;--acc50:#fbeee6;--green:#2f7a45;--green4:#7fbf7f;--green50:#eaf5ea;--amber:#9a5a00;--amber50:#fff3dc;--term:#1f1d18}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;color:var(--ink)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.abs{position:absolute}.scene{position:absolute;inset:0;opacity:0}
+.cap{position:absolute;left:0;right:0;bottom:64px;text-align:center;font-size:48px;font-weight:700;letter-spacing:-.5px}
+.kicker{font-size:22px;font-weight:700;letter-spacing:2px;color:var(--ink3)}
+.card{background:var(--card);border:2px solid var(--line);border-radius:28px;box-shadow:0 20px 50px rgba(29,27,24,.07)}
+.mono{font-family:"SF Mono",Menlo,monospace}
+.term{background:var(--term);border-radius:24px;color:#ece8e0;padding:34px 44px;font-size:34px}
+.act{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
+.big{font-size:96px;font-weight:800;letter-spacing:-2px;text-align:center;line-height:1.08;max-width:1500px}
+#label{position:absolute;top:34px;left:0;right:0;text-align:center;opacity:0}
+#label span{display:inline-block;padding:10px 24px;border-radius:999px;background:#fff;border:2px solid var(--line);font-size:22px;font-weight:600;color:var(--ink2)}
+.row{display:flex;gap:28px;padding:0 36px;height:62px;align-items:center;border-bottom:2px solid var(--line);font-size:28px;opacity:0}
+.row .d{width:130px;color:var(--ink3);font-weight:600}
+.row.rest{color:var(--ink3);font-style:italic}.row.mock{color:var(--acc);font-weight:700}
+.star{color:var(--acc)}
+.step{position:absolute;top:150px;width:330px;height:96px;border-radius:48px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:32px;font-weight:700;background:#efebe3;color:var(--ink3)}
+.step b{display:inline-flex;width:44px;height:44px;border-radius:50%;align-items:center;justify-content:center;background:#fff;font-size:24px}
+.bubble{position:absolute;padding:30px 38px;border-radius:30px;font-size:34px;line-height:1.35;font-weight:500;opacity:0}
+.me{background:#e9e5dc;border-bottom-right-radius:8px}
+.dr{background:#fff;border:2px solid var(--line);border-bottom-left-radius:8px}
+.who{font-size:20px;font-weight:700;letter-spacing:1.5px;color:var(--ink3);margin-bottom:10px}
+.opt{position:absolute;top:668px;width:500px;height:200px;padding:28px 34px;opacity:0}
+.opt .k{font-size:44px;font-weight:800}.opt .v{font-size:28px;color:var(--ink2);margin-top:10px;line-height:1.35}
+.bar{font-size:36px;padding:26px 36px;border-radius:20px;background:#fff;border:2px solid var(--line);white-space:nowrap}
+</style></head>
+<body><div id="stage">
+
+ <!-- 1 · TITLE -->
+ <div class="scene" id="t0"><div class="act">
+  <div style="font-size:180px;font-weight:800;letter-spacing:-6px">drona</div>
+  <div style="font-size:52px;font-weight:600;color:var(--ink2)">An AI teacher that holds your deadline.</div>
+ </div></div>
+
+ <!-- 2 · PROBLEM -->
+ <div class="scene" id="p0"><div class="act">
+  <div class="kicker" style="color:var(--acc)">THE USUAL WAY</div>
+  <div class="big" id="pbig"></div>
+  <div class="abs" style="left:560px;right:560px;top:700px;height:14px;border-radius:7px;background:#efebe3"><div id="pfill" style="height:100%;border-radius:7px;background:var(--ink3);width:0"></div></div>
+ </div><div class="cap">Watching isn't learning.</div></div>
+
+ <!-- 3 · PLAN -->
+ <div class="scene" id="s3">
+  <div class="term abs mono" style="left:260px;top:120px;width:1400px;height:110px;padding-top:30px"><span style="color:#e07a4a">&gt; </span><span id="cmd"></span><span id="cur3">▍</span></div>
+  <div class="card abs" id="plan" style="left:260px;top:260px;width:1400px;height:580px;padding:22px 0;opacity:0">
+   <div class="row"><span class="d">Thu 22</span>Running Python, variables and types</div>
+   <div class="row"><span class="d">Fri 23</span>input(), strings, converting text to numbers</div>
+   <div class="row"><span class="d">Sat 24</span><span><span class="star">★</span> if / elif / else</span></div>
+   <div class="row rest"><span class="d">Sun 25</span>Rest</div>
+   <div class="row"><span class="d">Mon 26</span><span><span class="star">★</span> Lists and loops</span></div>
+   <div class="row"><span class="d">Tue 27</span><span><span class="star">★</span> Functions</span></div>
+   <div class="row mock"><span class="d">Wed 28</span>Final mock: build the budget checker from a blank file</div>
+   <div class="row" style="border:0"><span class="d">Thu 29</span>Buffer: fix what the mock showed</div>
+  </div>
+  <div class="cap">Give it a goal and a date. It builds the plan.</div>
+ </div>
+
+ <!-- 4 · DONE MEANS -->
+ <div class="scene" id="s4">
+  <div class="card abs" style="left:310px;top:230px;width:1300px;height:520px;padding:64px 80px">
+   <div class="kicker" style="color:var(--acc)">DONE MEANS</div>
+   <div id="exam" style="font-size:50px;font-weight:700;line-height:1.3;margin-top:30px;letter-spacing:-.5px"></div>
+  </div>
+  <div class="cap">It agrees on what "done" looks like first.</div>
+ </div>
+
+ <!-- 5 · THE LOOP -->
+ <div class="scene" id="s5">
+  <div class="step" id="st0" style="left:180px"><b>1</b>theory</div>
+  <div class="step" id="st1" style="left:580px"><b>2</b>notebook</div>
+  <div class="step" id="st2" style="left:980px"><b>3</b>hands-on</div>
+  <div class="step" id="st3" style="left:1380px"><b>4</b>out loud</div>
+  <div class="term abs mono" id="code" style="left:180px;top:300px;width:880px;height:520px;font-size:24px;line-height:1.6;opacity:0;white-space:pre"><div style="color:#9c968b;font-size:22px;margin-bottom:12px">day1.py · typed by the learner</div><span id="codetxt"></span></div>
+  <div class="bubble me" id="loud" style="left:1110px;top:300px;width:630px"><div class="who">LEARNER, OUT LOUD</div>"Unlike a cell it has no fixed place on a grid and nothing recalculates by itself."</div>
+  <div class="bubble dr" id="loud2" style="left:1110px;top:600px;width:630px"><div class="who">DRONA</div>"The best part was 'nothing recalculates by itself'."</div>
+  <div class="cap">You do the work. It reviews like an examiner.</div>
+ </div>
+
+ <!-- 6 · EXAMINER -->
+ <div class="scene" id="s6">
+  <div class="card abs" id="exm" style="left:200px;top:170px;width:680px;height:420px;padding:50px 56px;opacity:0">
+   <div class="kicker">EXAMINER</div>
+   <div style="font-size:44px;font-weight:700;margin-top:20px;line-height:1.25">A separate examiner wrote the questions.</div>
+   <div style="font-size:30px;color:var(--ink2);margin-top:22px;line-height:1.4">It hadn't seen the lesson, so drona never grades its own teaching.</div>
+  </div>
+  <div class="card abs" id="score" style="left:960px;top:170px;width:760px;height:420px;padding:50px 56px;opacity:0">
+   <div class="kicker">CHECK · VARIABLES</div>
+   <div style="display:flex;align-items:baseline;gap:22px;margin-top:16px"><span id="scnum" style="font-size:150px;font-weight:800;color:var(--green);letter-spacing:-4px">0</span><span style="font-size:34px;color:var(--ink3)">pass mark 80</span></div>
+   <div class="mono" style="font-size:28px;color:var(--ink2);margin-top:10px">Q1 100 · Q2 100 · Q3 100 · Q4 100</div>
+  </div>
+  <div class="bar abs mono" id="bar6" style="left:200px;top:640px;width:1520px;opacity:0"></div>
+  <div class="cap">A separate examiner decides when you're done.</div>
+ </div>
+
+ <!-- 7 · BEHIND -->
+ <div class="scene" id="s7">
+  <div class="bar abs mono" id="bar7" style="left:200px;top:110px;width:1520px;border-color:#e8c98f;background:var(--amber50)">Python basics (behind) █░░░░░░░ 15% · day 6/8 · <b style="color:var(--amber)">4 days behind</b></div>
+  <div class="bubble me" id="b7a" style="right:200px;top:250px;width:900px"><div class="who">LEARNER</div>"I'll sleep 5 hours and study Sunday too if that's what it takes, just replan it."</div>
+  <div class="bubble dr" id="b7b" style="left:200px;top:440px;width:1000px"><div class="who">DRONA</div><b>"5-hour nights are off the table.</b> Sleep stays at 8h whatever happens."</div>
+  <div class="card opt" id="o0" style="left:200px"><div class="k">A</div><div class="v">Keep Thu 29<br>2h a day, with your yes</div></div>
+  <div class="card opt" id="o1" style="left:710px"><div class="k">B</div><div class="v">Keep Thu 29<br>Cut functions from the done-test</div></div>
+  <div class="card opt" id="o2" style="left:1220px;border-color:var(--green4)"><div class="k">C <span style="font-size:24px;color:var(--green);font-weight:700">RECOMMENDED</span></div><div class="v">Move to Mon Nov 2<br>Same 1h a day</div></div>
+  <div class="cap">Behind? It replans. It never cuts your sleep.</div>
+ </div>
+
+ <!-- 8 · VIEW + END -->
+ <div class="scene" id="s8a">
+  <div class="card abs" style="left:360px;top:110px;width:1200px;height:780px;overflow:hidden;padding:0">
+   <div style="height:44px;background:#efebe3;display:flex;align-items:center;gap:10px;padding-left:20px"><i style="width:14px;height:14px;border-radius:50%;background:#d8d2c6"></i><i style="width:14px;height:14px;border-radius:50%;background:#d8d2c6"></i><i style="width:14px;height:14px;border-radius:50%;background:#d8d2c6"></i><span class="mono" style="margin-left:18px;font-size:18px;color:var(--ink3)">~/drona/python-basics/progress.html</span></div>
+   <img id="shot" src="progress.png" style="width:1200px;display:block">
+  </div>
+ </div>
+ <div class="scene" id="s8b"><div class="act" style="gap:34px">
+  <div style="font-size:150px;font-weight:800;letter-spacing:-5px">drona</div>
+  <div class="term mono" style="font-size:34px;line-height:1.6;padding:34px 56px"><span style="color:#9c968b">in Claude Code:</span><br>/plugin marketplace add yashMangal19/drona<br>/plugin install drona@drona</div>
+  <div class="mono" style="font-size:34px;color:var(--acc);font-weight:600">github.com/yashMangal19/drona</div>
+ </div><div class="cap" style="bottom:50px">Open source. Your data stays on your machine.</div></div>
+
+ <div id="label"><span id="labeltxt"></span></div>
+</div>
+<script src="kit/kit.js"></script>
+<script>
+const SC={t0:[0,4],p0:[4,10],s3:[10,20],s4:[20,27],s5:[27,37],s6:[37,45],s7:[45,56],s8a:[56,60.5],s8b:[60,64]}; const DUR=64;
+const CMD='/drona-plan learn Python basics in 1 week, as a hobbyist';
+const EXAM='From a blank file, write a ~30-line Python budget checker that asks for items and prices, stores them in a list, totals them with a loop inside a function, and uses an if to say whether you are over budget; then explain every line out loud.';
+const CODE='name = "apples"\nprice = 2.5\nqty = 3\ntotal = price * qty\nprint(str(qty) + " x " + name + " = " + str(total))\nprint(qty, "x", name, "=", total)\n\n<span style="color:#7fbf7f">$ python day1.py\n3 x apples = 7.5\n3 x apples = 7.5</span>';
+const STEP_AT=[27.6,29.2,30.8,33.2];
+function bar(pct,day){const f=Math.round(8*pct/100);return `Python basics ${'█'.repeat(f)}${'░'.repeat(8-f)} ${pct}% · day ${day}/8 · on track`;}
+async function render(t){
+ fadeScenes(t,SC,['s8b']);
+ // replay label
+ const lab=t>=10&&t<56?'Replay of the real dogfood run · learner\'s answers were scripted':t>=56&&t<60.5?'progress.html from the same run':'';
+ $('label').style.opacity=lab?Math.min(P(t,10,10.5),1-P(t,60,60.5)):0; if(lab) $('labeltxt').textContent=lab;
+ // 2
+ $('pbig').textContent=t<6.5?typed('Months of courses.',t,4.4,5.8):'Months of courses. Nothing built.';
+ $('pfill').style.width=`${E(t,6.2,9.2)*100}%`;
+ // 3
+ $('cmd').textContent=typed(CMD,t,10.6,13); $('cur3').style.opacity=t<13.4&&Math.floor(t*2.5)%2===0?1:0;
+ $('plan').style.opacity=E(t,13.4,13.9);
+ document.querySelectorAll('#plan .row').forEach((r,i)=>{const k=E(t,13.8+i*.35,14.2+i*.35); r.style.opacity=k; r.style.transform=`translateY(${(1-k)*14}px)`;});
+ // 4
+ $('exam').textContent=typed(EXAM,t,20.6,24.4);
+ // 5
+ STEP_AT.forEach((a,i)=>{const on=t>=a,s=$('st'+i); s.style.background=on?'var(--ink)':'#efebe3'; s.style.color=on?'#fff':'var(--ink3)'; s.querySelector('b').style.background=on?'var(--acc)':'#fff'; s.querySelector('b').style.color=on?'#fff':'var(--ink3)'; s.style.transform=`scale(${on?1+.06*(1-P(t,a,a+.5)):1})`;});
+ $('code').style.opacity=E(t,30.8,31.2);
+ const plain=CODE.replace(/<[^>]+>/g,''), n=Math.floor(plain.length*P(t,31,32.9));
+ let html='',c=0; for(const part of CODE.split(/(<[^>]+>)/)){ if(part.startsWith('<')){html+=part;continue;} const take=part.slice(0,Math.max(0,n-c)); html+=take.replace(/&/g,'&amp;'); c+=part.length; }
+ $('codetxt').innerHTML=html;
+ $('loud').style.opacity=E(t,33.4,33.9); $('loud2').style.opacity=E(t,34.8,35.3);
+ // 6
+ $('exm').style.opacity=E(t,37.4,37.9); $('score').style.opacity=E(t,39.2,39.7);
+ $('scnum').textContent=Math.round(100*E(t,39.5,40.8));
+ $('bar6').style.opacity=E(t,41.2,41.6); $('bar6').textContent=t<42.4?bar(0,1):bar(15,1);
+ $('bar6').style.background=t>=42.4&&t<43.4?'var(--green50)':'#fff';
+ // 7
+ $('bar7').style.opacity=E(t,45.4,45.9); $('b7a').style.opacity=E(t,46.6,47.1); $('b7b').style.opacity=E(t,49,49.5);
+ for(let i=0;i<3;i++){const k=E(t,51.6+i*.5,52.1+i*.5); $('o'+i).style.opacity=k; $('o'+i).style.transform=`translateY(${(1-k)*20}px)`;}
+ // 8
+ $('shot').style.transform=`translateY(${-E(t,57,60)*300}px)`;
+ await renderVideos(t);
+}
+window.render=render; window.DUR=DUR; boot();
+</script></body></html>
