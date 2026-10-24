@@ -2,7 +2,7 @@
 
 **An open-source AI teacher that holds your deadline, makes you do the work, and checks you like the real exam would.**
 
-> v0.1, not yet public. Being dogfooded first.
+> v0.1, an early release. Feedback welcome in GitHub issues.
 
 drona turns a goal ("learn Python basics in a week", "JEE Physics by May", "ramp up on a new platform") into a dated plan, teaches each concept through a four-step loop, and only marks it done when you pass exam-style questions from a separate examiner. Fall behind and it replans to still make the date, without ever cutting your sleep.
 
